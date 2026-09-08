@@ -299,6 +299,8 @@ def build_api_kwargs(agent, api_messages: list) -> dict:
             preserve_dots=agent._anthropic_preserve_dots(),
             context_length=ctx_len,
             base_url=getattr(agent, "_anthropic_base_url", None),
+            session_id=getattr(agent, "session_id", None),
+            request_base_url=agent.base_url,
             fast_mode=(agent.request_overrides or {}).get("speed") == "fast",
             drop_context_1m_beta=bool(getattr(agent, "_oauth_1m_beta_disabled", False)),
         )
@@ -361,6 +363,7 @@ def build_api_kwargs(agent, api_messages: list) -> dict:
             tools=tools_for_api,
             reasoning_config=agent.reasoning_config,
             session_id=getattr(agent, "session_id", None),
+            base_url=agent.base_url,
             max_tokens=agent.max_tokens,
             request_overrides=agent.request_overrides,
             is_github_responses=is_github_responses,

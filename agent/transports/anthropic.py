@@ -62,7 +62,7 @@ class AnthropicTransport(ProviderTransport):
         """
         from agent.anthropic_adapter import build_anthropic_kwargs
 
-        return build_anthropic_kwargs(
+        kwargs = build_anthropic_kwargs(
             model=model,
             messages=messages,
             tools=tools,
@@ -76,6 +76,27 @@ class AnthropicTransport(ProviderTransport):
             fast_mode=params.get("fast_mode", False),
             drop_context_1m_beta=params.get("drop_context_1m_beta", False),
         )
+
+        # OpenCode Go (minimax-*/qwen* on /v1/messages) rejects requests
+        # without a session header: HTTP 400 MissingSessionID "cannot be
+        # routed efficiently". Mirrors the chat_completions and codex paths.
+        session_id = params.get("session_id")
+        _req_url = str(params.get("request_base_url") or params.get("base_url") or "").lower()
+        if session_id and "opencode.ai/zen/go" in _req_url:
+            existing = kwargs.get("extra_headers")
+            merged: Dict[str, str] = {}
+            if isinstance(existing, dict):
+                merged.update(
+                    {
+                        str(key): str(value)
+                        for key, value in existing.items()
+                        if key and value is not None
+                    }
+                )
+            merged["x-opencode-session"] = str(session_id)
+            kwargs["extra_headers"] = merged
+
+        return kwargs
 
     def normalize_response(self, response: Any, **kwargs) -> NormalizedResponse:
         """Normalize Anthropic response to NormalizedResponse.

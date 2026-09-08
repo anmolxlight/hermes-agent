@@ -165,6 +165,24 @@ class ResponsesApiTransport(ProviderTransport):
         if max_tokens is not None and not is_codex_backend:
             kwargs["max_output_tokens"] = max_tokens
 
+        # OpenCode Go (muse-spark et al on /v1/responses) rejects requests
+        # without a session header: HTTP 400 MissingSessionID "cannot be
+        # routed efficiently". The chat_completions and anthropic_messages
+        # paths attach it too — every Go transport needs it.
+        if session_id and "opencode.ai/zen/go" in str(params.get("base_url") or "").lower():
+            existing_extra_headers = kwargs.get("extra_headers")
+            merged_extra_headers: Dict[str, str] = {}
+            if isinstance(existing_extra_headers, dict):
+                merged_extra_headers.update(
+                    {
+                        str(key): str(value)
+                        for key, value in existing_extra_headers.items()
+                        if key and value is not None
+                    }
+                )
+            merged_extra_headers["x-opencode-session"] = str(session_id)
+            kwargs["extra_headers"] = merged_extra_headers
+
         if is_xai_responses and session_id:
             existing_extra_headers = kwargs.get("extra_headers")
             merged_extra_headers: Dict[str, str] = {}
