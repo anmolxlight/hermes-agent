@@ -32,10 +32,27 @@ def _is_deepseek_thinking_model(model: str | None) -> bool:
 
 
 class OpenCodeGoProfile(ProviderProfile):
-    """OpenCode Go - model-specific reasoning controls."""
+    """OpenCode Go - model-specific reasoning controls + required session header."""
 
     def build_api_kwargs_extras(
-        self, *, reasoning_config: dict | None = None, model: str | None = None, **context
+        self,
+        *,
+        reasoning_config: dict | None = None,
+        model: str | None = None,
+        session_id: str | None = None,
+        **context,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        extra_body, top_level = self._reasoning_extras(reasoning_config, model)
+        if session_id:
+            # Console Go rejects requests missing this header: "Request is
+            # missing x-opencode-session and cannot be routed efficiently."
+            # Reuse Hermes's own session_id so retries/turns in one
+            # conversation route to the same backend.
+            top_level = {**top_level, "extra_headers": {"x-opencode-session": session_id}}
+        return extra_body, top_level
+
+    def _reasoning_extras(
+        self, reasoning_config: dict | None, model: str | None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         extra_body: dict[str, Any] = {}
         top_level: dict[str, Any] = {}

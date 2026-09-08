@@ -146,6 +146,37 @@ class TestOpenCodeGoModelGating:
         assert top_level == {}
 
 
+class TestOpenCodeGoSessionHeader:
+    """Console Go 400s without x-opencode-session; profile must attach it."""
+
+    def test_session_id_becomes_header(self, opencode_go_profile):
+        extra_body, top_level = opencode_go_profile.build_api_kwargs_extras(
+            reasoning_config=None,
+            model="glm-5.1",
+            session_id="abc123",
+        )
+        assert extra_body == {}
+        assert top_level == {"extra_headers": {"x-opencode-session": "abc123"}}
+
+    def test_no_session_id_omits_header(self, opencode_go_profile):
+        extra_body, top_level = opencode_go_profile.build_api_kwargs_extras(
+            reasoning_config=None, model="glm-5.1", session_id=None,
+        )
+        assert top_level == {}
+
+    def test_session_header_coexists_with_reasoning_controls(self, opencode_go_profile):
+        extra_body, top_level = opencode_go_profile.build_api_kwargs_extras(
+            reasoning_config={"enabled": True, "effort": "high"},
+            model="kimi-k2.6",
+            session_id="abc123",
+        )
+        assert extra_body == {"thinking": {"type": "enabled"}}
+        assert top_level == {
+            "reasoning_effort": "high",
+            "extra_headers": {"x-opencode-session": "abc123"},
+        }
+
+
 class TestOpenCodeGoFullKwargsIntegration:
     """End-to-end transport kwargs include the profile-provided controls."""
 
